@@ -1,12 +1,12 @@
-#ifndef PRVPWR_H
-#define PRVPWR_H
+#pragma once
 
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <libgen.h>
+#include <time.h>
 
-static void mergeTraces(char *prv, char *pwr);
-static void addPCFType(char *file);
-
-#endif
+static void mergeTraces(char *prv, char *pwr, char *merged_fn);
+static void addPCFType(char *ifile, char *ofile);

@@ -1,5 +1,4 @@
-#ifndef PARSEOPTIONS_H
-#define PARSEOPTIONS_H
+#pragma once
 
 #include <popt.h>
 #include <string.h>
@@ -27,5 +26,3 @@ static struct poptOption long_options[] =
 	POPT_AUTOHELP
 	{NULL, 0, 0, NULL, 0}
 };
-
-#endif
