@@ -70,6 +70,7 @@ int main (int argc, char **argv)
 			timestamp -= strtoul(offset, NULL, 10); // substract offset
 		}
 
+    // appl_id is wrong
 		fprintf(output_fp, "2:1:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n", timestamp, energy);
 	}
 
@@ -90,6 +91,9 @@ int main (int argc, char **argv)
 		merge_prv_fn[strlen(merge_prv_fn) - 4] = 0;
 		strncat(merge_prv_fn, ".pcf", 4);
 		addPCFType(merge_prv_fn, merged_fn);
+		merge_prv_fn[strlen(merge_prv_fn) - 4] = 0;
+ 		strncat(merge_prv_fn, ".row", 4);
+    modifyROW(merge_prv_fn, merged_fn);
 	}
 
 	return ret;
@@ -260,7 +264,7 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 					fprintf(merged_fp, "%s", prvline);
 				}
 			}
-		}	while (tsprv < tspwr);
+		}	while (tsprv < tspwr); //condition is wrong, it should write up to the end of the trace, not just until paraver timestamp is greater than power timestamp
 	}
 
 	debug("\tDONE!\n", NULL);
@@ -275,40 +279,88 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 
 static void addPCFType(char *ifile, char *ofile)
 {
-	FILE *ifp, *ofp;
-	int err = 0;
-	char *line = NULL;
-	size_t len = 0;
+  FILE *ifp, *ofp;
+  int err = 0;
+  char *line = NULL;
+  size_t len = 0;
 
-	ofile[strlen(ofile) - 4] = 0;
-	strncat(ofile, ".pcf", 4);
-	debug("Writing %s ...", ofile);
+  ofile[strlen(ofile) - 4] = 0;
+  strncat(ofile, ".pcf", 4);
+  debug("Writing %s ...", ofile);
 
-	if ((ifp = fopen(ifile, "r")) == NULL)
-	{
-		err = errno;
-		fprintf(stderr, "%s: %s\n", ifile, strerror(err));
-		exit(EXIT_FAILURE);
-	}
+  if ((ifp = fopen(ifile, "r")) == NULL)
+  {
+    err = errno;
+    fprintf(stderr, "%s: %s\n", ifile, strerror(err));
+    exit(EXIT_FAILURE);
+  }
+
+  if ((ofp = fopen(ofile, "w")) == NULL)
+  {
+    err = errno;
+    fprintf(stderr, "%s: %s\n", ofile, strerror(err));
+    exit(EXIT_FAILURE);
+  }
+
+  while (getline(&line, &len, ifp) != -1)
+  {
+    fprintf(ofp, "%s", line);
+  }
+
+  fprintf(ofp, "\n\nEVENT_TYPE\n" \
+      "0\t90000000\tPower\n");
+
+  free(line);
+  fclose(ifp);
+  fclose(ofp);
+
+  debug("\tDONE!\n", NULL);
+}
+
+static void modifyROW(char *ifile, char *ofile)
+{
+  FILE *ifp, *ofp;
+  int err = 0;
+  char *line = NULL;
+  size_t len = 0, apps = 0;
+
+  ofile[strlen(ofile) - 4] = 0;
+  strncat(ofile, ".row", 4);
+  debug("Writing %s ...", ofile);
+
+  if ((ifp = fopen(ifile, "r")) == NULL)
+  {
+    err = errno;
+    fprintf(stderr, "%s: %s\n", ifile, strerror(err));
+    exit(EXIT_FAILURE);
+  }
 
 	if ((ofp = fopen(ofile, "w")) == NULL)
 	{
-		err = errno;
-		fprintf(stderr, "%s: %s\n", ofile, strerror(err));
-		exit(EXIT_FAILURE);
+    err = errno;
+    fprintf(stderr, "%s: %s\n", ofile, strerror(err));
+    exit(EXIT_FAILURE);
 	}
 
-	while (getline(&line, &len, ifp) != -1)
-	{
-		fprintf(ofp, "%s", line);
-	}
+  while (getline(&line, &len, ifp) != -1)
+  {
+    if (strstr(line, "LEVEL APPL") == NULL)
+    {
+      fprintf(ofp, "%s", line);
+    }else
+    {
+      strtok(line, " ");
+      strtok(NULL, " ");
+      strtok(NULL, " ");
+      apps = strtoul(strtok(NULL, " "), NULL, 10) + 1;
+      fprintf(ofp, "LEVEL APPL SIZE %zu\n", apps);
+    }
+  }
+  fprintf(ofp, "power\n");
 
-	fprintf(ofp, "\n\nEVENT_TYPE\n" \
-			"0\t90000000\tPower\n");
-
-	free(line);
-	fclose(ifp);
-	fclose(ofp);
-
-	debug("\tDONE!\n", NULL);
+  debug("\tDONE!\n", NULL);
+      
+  free(line);
+  fclose(ifp);
+  fclose(ofp);
 }

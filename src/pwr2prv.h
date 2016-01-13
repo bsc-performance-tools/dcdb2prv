@@ -10,3 +10,4 @@
 
 static void mergeTraces(char *prv, char *pwr, char *merged_fn);
 static void addPCFType(char *ifile, char *ofile);
+static void modifyROW(char *ifile, char *ofile);
