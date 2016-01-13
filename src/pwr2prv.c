@@ -232,43 +232,54 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 		exit(EXIT_FAILURE);
 	}
 
-	while (getline(&line, &len, pwr_fp) != -1)
-	{
-		pwrline = calloc((strlen(line) + 1), sizeof(char *));
-		strncpy(pwrline, line, strlen(line) + 1);
-		strtok(line, ":"); // type
-		strtok(NULL, ":"); // cpu_id
-		strtok(NULL, ":"); // appl_id
-		strtok(NULL, ":"); // task_id
-		strtok(NULL, ":"); // thread_id
-		tspwr = strtoul(strtok(NULL, ":"), NULL, 10);
+  if (getline(&line, &len, pwr_fp) != -1)
+  {
+    pwrline = realloc(pwrline, strlen(line) * sizeof(char *));
+    strncpy(pwrline, line, strlen(line));
+    strtok(line, ":"); // type
+    strtok(NULL, ":"); // cpu_id
+    strtok(NULL, ":"); // appl_id
+    strtok(NULL, ":"); // task_id
+    strtok(NULL, ":"); // thread_id
+    tspwr = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
     rest = strtok(NULL, "\n"); // rest
     restcpy = realloc(restcpy, strlen(rest) * sizeof(char *));
-    strncpy(restcpy, rest, strlen(rest));
+    strncpy(restcpy, rest, strlen(rest));    
+  }
+  
+  while (getline(&line, &len, prv_fp) != -1)
+  {
+    prvline = realloc(prvline, strlen(line) * sizeof(char *));
+    strncpy(prvline, line, strlen(line));
+    strtok(prvline, ":"); // type
+    strtok(NULL, ":"); // cpu_id
+    strtok(NULL, ":"); // appl_id
+    strtok(NULL, ":"); // task_id
+    strtok(NULL, ":"); // thread_id
+    tsprv = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
 
-		do {
-			read = getline(&line, &len, prv_fp);
-			if (read != -1)
-			{
-				prvline = calloc((strlen(line) + 1), sizeof(char *));
-				strncpy(prvline, line, strlen(line) + 1);
-				strtok(line, ":"); // type
-				strtok(NULL, ":"); // cpu_id
-				strtok(NULL, ":"); // appl_id
-				strtok(NULL, ":"); // task_id
-				strtok(NULL, ":"); // thread_id
-				tsprv = strtoul(strtok(NULL, ":"), NULL, 10);
-				if (tsprv < tspwr)
-				{
-					fprintf(merged_fp, "%s", prvline);
-				} else {
-          fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s", 2, 1, apps, 1, 1, tspwr, restcpy);
-         	fprintf(merged_fp, "\n%s", prvline);
-				}
-			}
-		}	while (tsprv < tspwr); //condition is wrong, it should write up to the end of the trace, not just until paraver timestamp is greater than power timestamp
-	}
+    if (tsprv > tspwr)
+    {
+      fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s\n", 2, 1, apps, 1, 1, tspwr, restcpy);
+      if (getline(&line, &len, pwr_fp) != -1)
+      {
+        pwrline = realloc(pwrline, strlen(line) * sizeof(char *));
+        strncpy(pwrline, line, strlen(line));
+        strtok(line, ":"); // type
+        strtok(NULL, ":"); // cpu_id
+        strtok(NULL, ":"); // appl_id
+        strtok(NULL, ":"); // task_id
+        strtok(NULL, ":"); // thread_id
+        tspwr = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
+        rest = strtok(NULL, "\n"); // rest
+        restcpy = realloc(restcpy, strlen(rest) * sizeof(char *));
+        strncpy(restcpy, rest, strlen(rest));    
+      }
+    }
 
+    fprintf(merged_fp, "%s", line);
+  }
+    
 	debug("\tDONE!\n", NULL);
 
 	free(line);
