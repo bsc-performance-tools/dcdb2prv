@@ -70,7 +70,6 @@ int main (int argc, char **argv)
 			timestamp -= strtoul(offset, NULL, 10); // substract offset
 		}
 
-    // appl_id is wrong
 		fprintf(output_fp, "2:1:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n", timestamp, energy);
 	}
 
@@ -174,7 +173,7 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 	time_t now = time(0);
 	struct tm *local = localtime(&now);
 	char day[3], mon[3], hour[3], min[3];
-	char *str = NULL;
+	char *str = NULL, *rest = NULL, *restcpy = NULL;
 	size_t apps = 0, tspwr = 0, tsprv = 0;
 	ssize_t read;
 
@@ -237,12 +236,15 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 	{
 		pwrline = calloc((strlen(line) + 1), sizeof(char *));
 		strncpy(pwrline, line, strlen(line) + 1);
-		strtok(line, ":");
-		strtok(NULL, ":");
-		strtok(NULL, ":");
-		strtok(NULL, ":");
-		strtok(NULL, ":");
+		strtok(line, ":"); // type
+		strtok(NULL, ":"); // cpu_id
+		strtok(NULL, ":"); // appl_id
+		strtok(NULL, ":"); // task_id
+		strtok(NULL, ":"); // thread_id
 		tspwr = strtoul(strtok(NULL, ":"), NULL, 10);
+    rest = strtok(NULL, "\n"); // rest
+    restcpy = realloc(restcpy, strlen(rest) * sizeof(char *));
+    strncpy(restcpy, rest, strlen(rest));
 
 		do {
 			read = getline(&line, &len, prv_fp);
@@ -250,18 +252,18 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 			{
 				prvline = calloc((strlen(line) + 1), sizeof(char *));
 				strncpy(prvline, line, strlen(line) + 1);
-				strtok(line, ":");
-				strtok(NULL, ":");
-				strtok(NULL, ":");
-				strtok(NULL, ":");
-				strtok(NULL, ":");
+				strtok(line, ":"); // type
+				strtok(NULL, ":"); // cpu_id
+				strtok(NULL, ":"); // appl_id
+				strtok(NULL, ":"); // task_id
+				strtok(NULL, ":"); // thread_id
 				tsprv = strtoul(strtok(NULL, ":"), NULL, 10);
 				if (tsprv < tspwr)
 				{
 					fprintf(merged_fp, "%s", prvline);
 				} else {
-					fprintf(merged_fp, "%s", pwrline);
-					fprintf(merged_fp, "%s", prvline);
+          fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s", 2, 1, apps, 1, 1, tspwr, restcpy);
+         	fprintf(merged_fp, "\n%s", prvline);
 				}
 			}
 		}	while (tsprv < tspwr); //condition is wrong, it should write up to the end of the trace, not just until paraver timestamp is greater than power timestamp
