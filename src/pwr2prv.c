@@ -1,7 +1,7 @@
 #include "pwr2prv.h"
 #include "parseOptions.h"
 
-#define debug(format, ...) if (verbose)	fprintf (stderr, format, __VA_ARGS__)
+#define debug(...) if (verbose)	fprintf(stderr, __VA_ARGS__)
 
 char *merge_prv_fn = NULL;
 char *pwr_fn = NULL;
@@ -165,7 +165,7 @@ end:
 
 static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 {
-	int ret = 0, err = 0;
+	int err = 0;
 	FILE *prv_fp, *pwr_fp, *merged_fp;
 	char *line = NULL, *pwrline = NULL, *prvline = NULL;
 	size_t len = 0;
@@ -175,7 +175,6 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 	char day[3], mon[3], hour[3], min[3];
 	char *str = NULL, *rest = NULL, *restcpy = NULL;
 	size_t apps = 0, tspwr = 0, tsprv = 0;
-	ssize_t read;
 
 	debug("Reading power trace from %s\n", pwr_fn);
 	if ((pwr_fp = fopen(pwr_fn, "r")) == NULL)
@@ -280,7 +279,7 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
     fprintf(merged_fp, "%s", line);
   }
     
-	debug("\tDONE!\n", NULL);
+	debug("\tDONE!\n");
 
 	free(line);
 	free(pwrline);
@@ -327,7 +326,7 @@ static void addPCFType(char *ifile, char *ofile)
   fclose(ifp);
   fclose(ofp);
 
-  debug("\tDONE!\n", NULL);
+  debug("\tDONE!\n");
 }
 
 static void modifyROW(char *ifile, char *ofile)
@@ -371,7 +370,7 @@ static void modifyROW(char *ifile, char *ofile)
   }
   fprintf(ofp, "power\n");
 
-  debug("\tDONE!\n", NULL);
+  debug("\tDONE!\n");
       
   free(line);
   fclose(ifp);
