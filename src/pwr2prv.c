@@ -65,10 +65,15 @@ int main (int argc, char **argv)
 		timestamp = strtoul(strtok(NULL, ","), NULL, 10); // timestamp
 		energy = strtoul(strtok(NULL, ","), NULL, 10); // energy
 
-		if (offset != NULL)
-		{
-			timestamp -= strtoul(offset, NULL, 10); // substract offset
-		}
+    // If the user doesn't specify an offset as a command line argument, use
+    // the first timestamp as the offset
+    if (offset == NULL)
+    {
+      offset = realloc(offset, sizeof(uint64_t));
+      sprintf(offset, "%" PRIu64, timestamp);
+    }
+
+		timestamp -= strtoul(offset, NULL, 10); // substract offset
 
 		fprintf(output_fp, "2:1:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n", timestamp, energy);
 	}
