@@ -242,7 +242,7 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
     strtok(NULL, ":"); // thread_id
     tspwr = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
     rest = strtok(NULL, "\n"); // rest
-    restcpy = realloc(restcpy, strlen(rest) * sizeof(char *));
+    restcpy = realloc(restcpy, (1 + strlen(rest)) * sizeof(char *));
     strncpy(restcpy, rest, strlen(rest));    
   }
   
@@ -271,7 +271,7 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
         strtok(NULL, ":"); // thread_id
         tspwr = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
         rest = strtok(NULL, "\n"); // rest
-        restcpy = realloc(restcpy, strlen(rest) * sizeof(char *));
+        restcpy = realloc(restcpy, (1 + strlen(rest)) * sizeof(char *));
         strncpy(restcpy, rest, strlen(rest));    
       }
     }
@@ -298,7 +298,7 @@ static void addPCFType(char *ifile, char *ofile)
 
   ofile[strlen(ofile) - 4] = 0;
   strncat(ofile, ".pcf", 4);
-  debug("Writing %s ...", ofile);
+  debug("Adding Power type to %s ...", ofile);
 
   if ((ifp = fopen(ifile, "r")) == NULL)
   {
@@ -338,7 +338,7 @@ static void modifyROW(char *ifile, char *ofile)
 
   ofile[strlen(ofile) - 4] = 0;
   strncat(ofile, ".row", 4);
-  debug("Writing %s ...", ofile);
+  debug("Adding Power application to %s ...", ofile);
 
   if ((ifp = fopen(ifile, "r")) == NULL)
   {
