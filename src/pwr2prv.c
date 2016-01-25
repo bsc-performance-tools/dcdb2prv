@@ -9,7 +9,8 @@ char *output_fn = NULL;
 bool verbose = false;
 char *offset = NULL;
 
-int main (int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	int ret = 0, err = 0;
 	FILE *pwr_fp, *output_fp;
@@ -60,22 +61,30 @@ int main (int argc, char **argv)
 
 	while (getline(&line, &len, pwr_fp) != -1)
 	{
-		// host = strtok(line, ","); host name
-		strtok(line, ","); // ditch host name
-		timestamp = strtoul(strtok(NULL, ","), NULL, 10); // timestamp
-		energy = strtoul(strtok(NULL, ","), NULL, 10); // energy
+		/* Ditch host name */
+		strtok(line, ","); 
+		/* Get timestamp */
+		timestamp = strtoul(strtok(NULL, ","), NULL, 10);
+		/* Get energy */
+		energy = strtoul(strtok(NULL, ","), NULL, 10);
 
-    // If the user doesn't specify an offset as a command line argument, use
-    // the first timestamp as the offset
-    if (offset == NULL)
-    {
-      offset = realloc(offset, sizeof(uint64_t));
-      sprintf(offset, "%" PRIu64, timestamp);
-    }
+		/*
+		 * If the user doesn't specify an offset as a command line
+		 * argument, use the first timestamp as the offset
+		*/
+		if (offset == NULL)
+		{
+			offset = realloc(offset, sizeof(uint64_t));
+			sprintf(offset, "%" PRIu64, timestamp);
+		}
 
-		timestamp -= strtoul(offset, NULL, 10); // substract offset
+		/* Substract offset */
+		timestamp -= strtoul(offset, NULL, 10);
 
-		fprintf(output_fp, "2:1:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n", timestamp, energy);
+		fprintf(output_fp,
+		    "2:1:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
+		    timestamp,
+		    energy);
 	}
 
 	free(line);
@@ -86,8 +95,10 @@ int main (int argc, char **argv)
 	{
 		debug("Merging with %s\n", merge_prv_fn);
 
-		merged_fn = calloc(strlen(basename(merge_prv_fn)) + 10, sizeof(char *));
-		strncpy(merged_fn, basename(merge_prv_fn), strlen(basename(merge_prv_fn)) + 1);
+		merged_fn = calloc(strlen(basename(merge_prv_fn)) + 10,
+		    sizeof(char *));
+		strncpy(merged_fn, basename(merge_prv_fn),
+		    strlen(basename(merge_prv_fn)) + 1);
 		merged_fn[strlen(merged_fn) - 4] = 0;
 		strncat(merged_fn, "_pwr_merge", 10);
 		
@@ -96,14 +107,15 @@ int main (int argc, char **argv)
 		strncat(merge_prv_fn, ".pcf", 4);
 		addPCFType(merge_prv_fn, merged_fn);
 		merge_prv_fn[strlen(merge_prv_fn) - 4] = 0;
- 		strncat(merge_prv_fn, ".row", 4);
-    modifyROW(merge_prv_fn, merged_fn);
+		strncat(merge_prv_fn, ".row", 4);
+		modifyROW(merge_prv_fn, merged_fn);
 	}
 
 	return ret;
 }
 
-static int parseOptions (int argc, char **argv)
+static int 
+parseOptions (int argc, char **argv)
 {
 	poptContext pc;
 	int opt = 0, ret = 0;
@@ -168,7 +180,8 @@ end:
 	return ret;
 }
 
-static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
+static void
+mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 {
 	int err = 0;
 	FILE *prv_fp, *pwr_fp, *merged_fp;
@@ -215,74 +228,80 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 		sprintf(hour, "%.2d", local->tm_hour);
 		sprintf(min, "%.2d", local->tm_min);
 		fprintf(merged_fp, "#Paraver (%s/%s/%d at %s:%s):",
-			day,
-			mon,
-			local->tm_year + 1900,
-			hour,
-			min
+		    day,
+		    mon,
+		    local->tm_year + 1900,
+		    hour,
+		    min
 		);
 
-		strtok(NULL, ":"); // minutes
+		strtok(NULL, ":"); /* minutes */
 		str = strtok(NULL, ":");
 		fprintf(merged_fp, "%s:", str);
 		str = strtok(NULL, ":");
 		fprintf(merged_fp, "%s:", str);
-		apps = strtoul(strtok(NULL, ":"), NULL, 10) + 1; // Add power monitoring app
+		/* Add power monitoring app */
+		apps = strtoul(strtok(NULL, ":"), NULL, 10) + 1;
 		fprintf(merged_fp, "%" PRIu64 ":", apps);
 		str = strtok(NULL, "\n");
-		fprintf(merged_fp, "%s,1(1:1)\n", str); // Add the new app to the resources list
+		/* Add the new app to the resources list */
+		fprintf(merged_fp, "%s,1(1:1)\n", str);
 	} else
 	{
 		exit(EXIT_FAILURE);
 	}
 
-  if (getline(&line, &len, pwr_fp) != -1)
-  {
-    pwrline = realloc(pwrline, strlen(line) * sizeof(char *));
-    strncpy(pwrline, line, strlen(line));
-    strtok(line, ":"); // type
-    strtok(NULL, ":"); // cpu_id
-    strtok(NULL, ":"); // appl_id
-    strtok(NULL, ":"); // task_id
-    strtok(NULL, ":"); // thread_id
-    tspwr = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
-    rest = strtok(NULL, "\n"); // rest
-    restcpy = realloc(restcpy, (1 + strlen(rest)) * sizeof(char *));
-    strncpy(restcpy, rest, strlen(rest));    
-  }
-  
-  while (getline(&line, &len, prv_fp) != -1)
-  {
-    prvline = realloc(prvline, strlen(line) * sizeof(char *));
-    strncpy(prvline, line, strlen(line));
-    strtok(prvline, ":"); // type
-    strtok(NULL, ":"); // cpu_id
-    strtok(NULL, ":"); // appl_id
-    strtok(NULL, ":"); // task_id
-    strtok(NULL, ":"); // thread_id
-    tsprv = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
+	if (getline(&line, &len, pwr_fp) != -1)
+	{
+		pwrline = realloc(pwrline, strlen(line) * sizeof(char *));
+		strncpy(pwrline, line, strlen(line));
+		strtok(line, ":"); /* type */
+		strtok(NULL, ":"); /* cpu_id */
+		strtok(NULL, ":"); /* appl_id */
+		strtok(NULL, ":"); /* task_id */
+		strtok(NULL, ":"); /* thread_id */
+		tspwr = strtoul(strtok(NULL, ":"), NULL, 10); /* timestamp */
+		rest = strtok(NULL, "\n"); /* rest */
+		restcpy = realloc(restcpy, (1 + strlen(rest)) * sizeof(char *));
+		strncpy(restcpy, rest, strlen(rest));    
+	}
 
-    if (tsprv > tspwr)
-    {
-      fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s\n", 2, 1, apps, 1, 1, tspwr, restcpy);
-      if (getline(&line, &len, pwr_fp) != -1)
-      {
-        pwrline = realloc(pwrline, strlen(line) * sizeof(char *));
-        strncpy(pwrline, line, strlen(line));
-        strtok(line, ":"); // type
-        strtok(NULL, ":"); // cpu_id
-        strtok(NULL, ":"); // appl_id
-        strtok(NULL, ":"); // task_id
-        strtok(NULL, ":"); // thread_id
-        tspwr = strtoul(strtok(NULL, ":"), NULL, 10); // timestamp
-        rest = strtok(NULL, "\n"); // rest
-        restcpy = realloc(restcpy, (1 + strlen(rest)) * sizeof(char *));
-        strncpy(restcpy, rest, strlen(rest));    
-      }
-    }
+	while (getline(&line, &len, prv_fp) != -1)
+	{
+		prvline = realloc(prvline, strlen(line) * sizeof(char *));
+		strncpy(prvline, line, strlen(line));
+		strtok(prvline, ":"); /* type */
+		strtok(NULL, ":"); /* cpu_id */
+		strtok(NULL, ":"); /* appl_id */
+		strtok(NULL, ":"); /* task_id */
+		strtok(NULL, ":"); /* thread_id */
+		tsprv = strtoul(strtok(NULL, ":"), NULL, 10); /* timestamp */
 
-    fprintf(merged_fp, "%s", line);
-  }
+		if (tsprv > tspwr)
+		{
+			fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s\n",
+			    2, 1, apps, 1, 1, tspwr, restcpy);
+			if (getline(&line, &len, pwr_fp) != -1)
+			{
+				pwrline = realloc(pwrline,
+				    strlen(line) * sizeof(char *));
+				strncpy(pwrline, line, strlen(line));
+				strtok(line, ":"); /* type */
+				strtok(NULL, ":"); /* cpu_id */
+				strtok(NULL, ":"); /* appl_id */
+				strtok(NULL, ":"); /* task_id */
+				strtok(NULL, ":"); /* thread_id */
+				/* timestamp */
+				tspwr = strtoul(strtok(NULL, ":"), NULL, 10);
+				rest = strtok(NULL, "\n"); /* rest */
+				restcpy = realloc(restcpy,
+				    (1 + strlen(rest)) * sizeof(char *));
+				strncpy(restcpy, rest, strlen(rest));    
+			}
+		}
+
+		fprintf(merged_fp, "%s", line);
+	}
     
 	debug("\tDONE!\n");
 
@@ -294,90 +313,94 @@ static void mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
 	fclose(merged_fp);
 }
 
-static void addPCFType(char *ifile, char *ofile)
+static void
+addPCFType(char *ifile, char *ofile)
 {
-  FILE *ifp, *ofp;
-  int err = 0;
-  char *line = NULL;
-  size_t len = 0;
+	FILE *ifp, *ofp;
+	int err = 0;
+	char *line = NULL;
+	size_t len = 0;
+	
+	ofile[strlen(ofile) - 4] = 0;
+	strncat(ofile, ".pcf", 4);
+	debug("Adding Power type to %s ...", ofile);
 
-  ofile[strlen(ofile) - 4] = 0;
-  strncat(ofile, ".pcf", 4);
-  debug("Adding Power type to %s ...", ofile);
-
-  if ((ifp = fopen(ifile, "r")) == NULL)
-  {
-    err = errno;
-    fprintf(stderr, "%s: %s\n", ifile, strerror(err));
-    exit(EXIT_FAILURE);
-  }
-
-  if ((ofp = fopen(ofile, "w")) == NULL)
-  {
-    err = errno;
-    fprintf(stderr, "%s: %s\n", ofile, strerror(err));
-    exit(EXIT_FAILURE);
-  }
-
-  while (getline(&line, &len, ifp) != -1)
-  {
-    fprintf(ofp, "%s", line);
-  }
-
-  fprintf(ofp, "\n\nEVENT_TYPE\n" \
-      "0\t90000000\tPower\n");
-
-  free(line);
-  fclose(ifp);
-  fclose(ofp);
-
-  debug("\tDONE!\n");
-}
-
-static void modifyROW(char *ifile, char *ofile)
-{
-  FILE *ifp, *ofp;
-  int err = 0;
-  char *line = NULL;
-  size_t len = 0, apps = 0;
-
-  ofile[strlen(ofile) - 4] = 0;
-  strncat(ofile, ".row", 4);
-  debug("Adding Power application to %s ...", ofile);
-
-  if ((ifp = fopen(ifile, "r")) == NULL)
-  {
-    err = errno;
-    fprintf(stderr, "%s: %s\n", ifile, strerror(err));
-    exit(EXIT_FAILURE);
-  }
+	if ((ifp = fopen(ifile, "r")) == NULL)
+	{
+		err = errno;
+		fprintf(stderr, "%s: %s\n", ifile, strerror(err));
+		exit(EXIT_FAILURE);
+	}
 
 	if ((ofp = fopen(ofile, "w")) == NULL)
 	{
-    err = errno;
-    fprintf(stderr, "%s: %s\n", ofile, strerror(err));
-    exit(EXIT_FAILURE);
+		err = errno;
+		fprintf(stderr, "%s: %s\n", ofile, strerror(err));
+		exit(EXIT_FAILURE);
 	}
 
-  while (getline(&line, &len, ifp) != -1)
-  {
-    if (strstr(line, "LEVEL APPL") == NULL)
-    {
-      fprintf(ofp, "%s", line);
-    }else
-    {
-      strtok(line, " ");
-      strtok(NULL, " ");
-      strtok(NULL, " ");
-      apps = strtoul(strtok(NULL, " "), NULL, 10) + 1;
-      fprintf(ofp, "LEVEL APPL SIZE %zu\n", apps);
-    }
-  }
-  fprintf(ofp, "power\n");
+	while (getline(&line, &len, ifp) != -1)
+	{
+		fprintf(ofp, "%s", line);
+	}
 
-  debug("\tDONE!\n");
-      
-  free(line);
-  fclose(ifp);
-  fclose(ofp);
+	fprintf(ofp, "\n\nEVENT_TYPE\n" \
+	    "0\t90000000\tPower\n");
+
+	free(line);
+	fclose(ifp);
+	fclose(ofp);
+	
+	debug("\tDONE!\n");
 }
+
+static void
+modifyROW(char *ifile, char *ofile)
+{
+	FILE *ifp, *ofp;
+	int err = 0;
+	char *line = NULL;
+	size_t len = 0, apps = 0;
+
+	ofile[strlen(ofile) - 4] = 0;
+	strncat(ofile, ".row", 4);
+	debug("Adding Power application to %s ...", ofile);
+
+	if ((ifp = fopen(ifile, "r")) == NULL)
+	{
+		err = errno;
+		fprintf(stderr, "%s: %s\n", ifile, strerror(err));
+		exit(EXIT_FAILURE);
+	}
+
+	if ((ofp = fopen(ofile, "w")) == NULL)
+	{
+		err = errno;
+		fprintf(stderr, "%s: %s\n", ofile, strerror(err));
+		exit(EXIT_FAILURE);
+	}
+
+	while (getline(&line, &len, ifp) != -1)
+	{
+		if (strstr(line, "LEVEL APPL") == NULL)
+		{
+			fprintf(ofp, "%s", line);
+		} else
+		{
+			strtok(line, " ");
+			strtok(NULL, " ");
+			strtok(NULL, " ");
+			apps = strtoul(strtok(NULL, " "), NULL, 10) + 1;
+			fprintf(ofp, "LEVEL APPL SIZE %zu\n", apps);
+		}
+	}
+	fprintf(ofp, "power\n");
+	
+	debug("\tDONE!\n");
+	      
+	free(line);
+	fclose(ifp);
+	fclose(ofp);
+}
+
+/* vim: set textwidth=80 colorcolumn=+0 tabstop=8 softtabstop=8 shiftwidth=8 noexpandtab cinoptions=\:0l1t0(0.5sm1: */
