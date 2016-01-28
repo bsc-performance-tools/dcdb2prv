@@ -233,6 +233,7 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
                 exit(EXIT_FAILURE);
         }
 
+        /* Get first entry of converted power trace */
         if (getline(&line, &len, pwr_fp) != -1) {
                 pwrline = realloc(pwrline, strlen(line) * sizeof(char *));
                 strncpy(pwrline, line, strlen(line));
@@ -247,16 +248,20 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
                 strncpy(restcpy, rest, strlen(rest));
         }
 
+        /* Iterate through all paraver trace entries */
         while (getline(&line, &len, prv_fp) != -1) {
-                prvline = realloc(prvline, strlen(line) * sizeof(char *));
+                prvline = calloc(strlen(line), sizeof(char *));
                 strncpy(prvline, line, strlen(line));
-                strtok(prvline, ":"); /* type */
+                strtok(line, ":"); /* type */
                 strtok(NULL, ":"); /* cpu_id */
                 strtok(NULL, ":"); /* appl_id */
                 strtok(NULL, ":"); /* task_id */
                 strtok(NULL, ":"); /* thread_id */
                 tsprv = strtoul(strtok(NULL, ":"), NULL, 10); /* timestamp */
 
+                /* if paraver entry timestamp is greater than power entry
+                 * timestamp, print power entry and get next power entry
+                 */
                 if (tsprv > tspwr) {
                         fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s\n",
                             2, 1, apps, 1, 1, tspwr, restcpy);
@@ -278,14 +283,15 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
                         }
                 }
 
-                fprintf(merged_fp, "%s", line);
+                /* Print paraver trace entry */
+                fprintf(merged_fp, "%s", prvline);
+                free(prvline);
         }
     
         debug("\tDONE!\n");
 
         free(line);
         free(pwrline);
-        free(prvline);
         fclose(pwr_fp);
         fclose(prv_fp);
         fclose(merged_fp);
