@@ -1,7 +1,7 @@
-pwr2prv
-=========
+dcdb2prv
+========
 
-pwr2prv is a small command line application to convert and merge dcdb power
+dcdb2prv is a small command line application to convert and merge dcdb power
 readings to BSC's (https://tools.bsc.es/paraver) Paraver performance analysis
 tool format.
 
@@ -12,7 +12,7 @@ Compilation
 
 Usage
 -----
-	Usage: pwr2prv [OPTION...]
+	Usage: dcdb2prv [OPTION...]
 		-m, --merge-prv=STRING	Merge with paraver trace
 		-p, --power=STRING	Power trace
 		-o, --output=STRING	Output filename

@@ -1,4 +1,4 @@
-bin_PROGRAMS = pwr2prv
-pwr2prv_SOURCES = pwr2prv.c pwr2prv.h parseOptions.h
-pwr2prv_CFLAGS = ${CFLAGS}
-pwr2prv_LDADD = ${LDFLAGS}
+bin_PROGRAMS = dcdb2prv
+dcdb2prv_SOURCES = dcdb2prv.c dcdb2prv.h parseOptions.h
+dcdb2prv_CFLAGS = ${CFLAGS}
+dcdb2prv_LDADD = ${LDFLAGS}
