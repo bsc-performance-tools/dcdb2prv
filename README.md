@@ -2,9 +2,8 @@ pwr2prv
 =========
 
 pwr2prv is a small command line application to convert and merge dcdb power
-readings to BSC's
-(http://www.bsc.es/computer-sciences/performance-tools/paraver) Paraver
-performance analysis tool format.
+readings to BSC's (https://tools.bsc.es/paraver) Paraver performance analysis
+tool format.
 
 Compilation
 -----------

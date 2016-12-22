@@ -14,10 +14,13 @@ main(int argc, char **argv)
 {
         int ret = 0, err = 0;
         FILE *pwr_fp, *output_fp;
+        char *sensor = NULL;
+        char *sensor_old = malloc(sizeof(char));
         uint64_t timestamp, energy;
         char *line = NULL;
         size_t len = 0;
         char *merged_fn;
+        int node = 1;
 
         ret = parseOptions(argc, argv);
 
@@ -55,7 +58,13 @@ main(int argc, char **argv)
 
         while (getline(&line, &len, pwr_fp) != -1) {
                 /* Ditch host name */
-                strtok(line, ",");
+                sensor = strtok(line, ",");
+                if (strcmp(sensor, sensor_old) != 0) {
+                        sensor_old = realloc(sensor_old, strlen(sensor)*sizeof(char));
+                        strcpy(sensor_old, sensor);
+                        node++;
+                }
+                fprintf(stdout, "sensor = %s\n", sensor);
                 /* Get timestamp */
                 timestamp = strtoul(strtok(NULL, ","), NULL, 10);
                 /* Get energy */
@@ -74,7 +83,8 @@ main(int argc, char **argv)
                 timestamp -= strtoul(offset, NULL, 10);
 
                 fprintf(output_fp,
-                    "2:1:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
+                    "2:%d:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
+                    node,
                     timestamp,
                     energy);
         }
