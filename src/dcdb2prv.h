@@ -7,10 +7,13 @@
 #include <stdbool.h>
 #include <libgen.h>
 #include <time.h>
+#include <glib.h>
 
-static void     mergeTraces(char *_prv, char *_pwr, char *_merged_fn);
+static void     mergeTraces(char *_prv, char *_pwr, char *_merged_fn, int *node);
 static void     addPCFType(char *_ifile, char *_ofile);
 static void     modifyROW(char *_ifile, char *_ofile);
+static gint     timecmp(gconstpointer a, gconstpointer b);
+static void     dump_pair (const char *key, const char *value);
 
 /*
  * Modeline for space only BSD KNF code style

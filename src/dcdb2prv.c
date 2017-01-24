@@ -16,11 +16,18 @@ main(int argc, char **argv)
         FILE *pwr_fp, *output_fp;
         char *sensor = NULL;
         char *sensor_old = malloc(sizeof(char));
+        char *sens = NULL;
         uint64_t timestamp, energy;
         char *line = NULL;
+        char *linecpy = NULL;
+        ssize_t read = 0;
         size_t len = 0;
         char *merged_fn;
-        int node = 1;
+        int node = 0;
+        GHashTable *nodes_ht = g_hash_table_new(g_str_hash, g_str_equal);
+        GPtrArray *sorted_trace_a = g_ptr_array_new();
+        int index = 0;
+        char *prvnode = malloc(sizeof(char *));
 
         ret = parseOptions(argc, argv);
 
@@ -56,15 +63,28 @@ main(int argc, char **argv)
                 exit(EXIT_FAILURE);
         }
 
-        while (getline(&line, &len, pwr_fp) != -1) {
-                /* Ditch host name */
-                sensor = strtok(line, ",");
-                if (strcmp(sensor, sensor_old) != 0) {
-                        sensor_old = realloc(sensor_old, strlen(sensor)*sizeof(char));
-                        strcpy(sensor_old, sensor);
-                        node++;
+        while ((read = getline (&line, &len, pwr_fp)) != -1 ) {
+                linecpy = strndup(line, read);
+                sensor = strtok(linecpy, ",");
+                sprintf(prvnode, "%d", node);
+
+                if (g_hash_table_insert(nodes_ht, strdup(sensor), strdup(prvnode))) {
+                        node ++;
                 }
-                fprintf(stdout, "sensor = %s\n", sensor);
+                g_ptr_array_add(sorted_trace_a, strndup(line, read));
+        }
+
+        g_ptr_array_sort(sorted_trace_a, (GCompareFunc)timecmp);
+
+//        g_hash_table_foreach(nodes_ht, (GHFunc)dump_pair, NULL);
+
+        for (index = 0; index < sorted_trace_a->len; index++) {
+                line = g_ptr_array_index(sorted_trace_a, index);
+
+                /* Get node */
+                sensor = strtok(line, ",");
+                prvnode = g_hash_table_lookup(nodes_ht, sensor);
+
                 /* Get timestamp */
                 timestamp = strtoul(strtok(NULL, ","), NULL, 10);
                 /* Get energy */
@@ -83,8 +103,9 @@ main(int argc, char **argv)
                 timestamp -= strtoul(offset, NULL, 10);
 
                 fprintf(output_fp,
-                    "2:%d:1:1:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
-                    node,
+                    "2:%s:1:%s:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
+                    prvnode,
+                    prvnode,
                     timestamp,
                     energy);
         }
@@ -103,7 +124,7 @@ main(int argc, char **argv)
                 merged_fn[strlen(merged_fn) - 4] = 0;
                 strncat(merged_fn, "_pwr_merge", 10);
 
-                mergeTraces(merge_prv_fn, output_fn, merged_fn);
+                mergeTraces(merge_prv_fn, output_fn, merged_fn, &node);
                 merge_prv_fn[strlen(merge_prv_fn) - 4] = 0;
                 strncat(merge_prv_fn, ".pcf", 4);
                 addPCFType(merge_prv_fn, merged_fn);
@@ -178,7 +199,7 @@ end:
 }
 
 static void
-mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
+mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn, int *node)
 {
         int err = 0;
         FILE *prv_fp, *pwr_fp, *merged_fp;
@@ -235,10 +256,11 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
                 fprintf(merged_fp, "%s:", str);
                 /* Add power monitoring app */
                 apps = strtoul(strtok(NULL, ":"), NULL, 10) + 1;
-                fprintf(merged_fp, "%" PRIu64 ":", apps);
+                fprintf(merged_fp, "%" PRIu64 ":", 1);
                 str = strtok(NULL, "\n");
                 /* Add the new app to the resources list */
-                fprintf(merged_fp, "%s,1(1:1)\n", str);
+//                fprintf(merged_fp, "%s,1(%d:1)\n", str, *node);
+                fprintf(merged_fp, "%s\n", str);
         } else {
                 exit(EXIT_FAILURE);
         }
@@ -262,7 +284,7 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
         while (getline(&line, &len, prv_fp) != -1) {
                 prvline = calloc(strlen(line), sizeof(char *));
                 strncpy(prvline, line, strlen(line));
-                strtok(line, ":"); /* type */
+                if (strncmp(strtok(line, ":"), "c", sizeof(char)) != 0) {/* type */
                 strtok(NULL, ":"); /* cpu_id */
                 strtok(NULL, ":"); /* appl_id */
                 strtok(NULL, ":"); /* task_id */
@@ -273,12 +295,13 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
                  * timestamp, print power entry and get next power entry
                  */
                 if (tsprv > tspwr) {
-                        fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s\n",
-                            2, 1, apps, 1, 1, tspwr, restcpy);
+                        //fprintf(merged_fp, "%d:%d:%zu:%d:%d:%zu:%s\n",
+                        //    2, 1, apps, 1, 1, tspwr, restcpy);
+                        fprintf(merged_fp, "%s", pwrline);
                         if (getline(&line, &len, pwr_fp) != -1) {
                                 pwrline = realloc(pwrline,
-                                    strlen(line) * sizeof(char *));
-                                strncpy(pwrline, line, strlen(line));
+                                    (strlen(line) +1) * sizeof(char *));
+                                strncpy(pwrline, line, strlen(line)+1);
                                 strtok(line, ":"); /* type */
                                 strtok(NULL, ":"); /* cpu_id */
                                 strtok(NULL, ":"); /* appl_id */
@@ -291,6 +314,7 @@ mergeTraces(char *prv_fn, char *pwr_fn, char *merged_fn)
                                     (1 + strlen(rest)) * sizeof(char *));
                                 strncpy(restcpy, rest, strlen(rest));
                         }
+                }
                 }
 
                 /* Print paraver trace entry */
@@ -386,6 +410,26 @@ modifyROW(char *ifile, char *ofile)
         free(line);
         fclose(ifp);
         fclose(ofp);
+}
+
+gint
+timecmp (gconstpointer a, gconstpointer b) {
+        char *line_a = strdup(*(char **)a);
+        char *line_b = strdup(*(char **)b);
+        char *time_as, *time_bs;
+
+        strtok(line_a, ",");
+        time_as = strtok(NULL, ",");
+
+        strtok(line_b, ",");
+        time_bs = strtok(NULL, ",");
+
+        return strcmp (time_as, time_bs);
+}
+
+static void
+dump_pair (const char *key, const char *value) {
+        g_print("Key: %s Value: %s\n", key, value);
 }
 
 /*

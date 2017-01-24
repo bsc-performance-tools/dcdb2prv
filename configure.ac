@@ -16,6 +16,9 @@ AC_PROG_INSTALL
 AC_SEARCH_LIBS([poptGetContext], [popt], [],
 							 [AC_MSG_ERROR([Cannot find popt.])])
 
+PKG_CHECK_MODULES([glib2], [glib-2.0 >= 2.40], [],
+									[AC_MSG_ERROR([Cannot find glib-2.0.])])
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h])
 
