@@ -13,7 +13,6 @@ Compilation
 Usage
 -----
 	Usage: dcdb2prv [OPTION...]
-		-m, --merge-prv=STRING	Merge with paraver trace
 		-p, --power=STRING	Power trace
 		-o, --output=STRING	Output filename
 		-t, --offset=INT	Initial timestamp (ns)
