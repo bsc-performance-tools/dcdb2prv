@@ -7,7 +7,6 @@
 enum
 {
         OPT_NONE = 0,
-        OPT_MERGE_PRV_FILE,
         OPT_PWR_FILE,
         OPT_OUTPUT,
         OPT_OFFSET,
@@ -18,8 +17,6 @@ static int      parseOptions(int _argc, char **_argv);
 
 static struct poptOption long_options[] =
 {
-        {"merge-prv", 'm', POPT_ARG_STRING, NULL, OPT_MERGE_PRV_FILE,
-            "Merge with paraver trace", NULL},
         {"power", 'p', POPT_ARG_STRING, NULL, OPT_PWR_FILE,
             "Power trace", NULL},
         {"output", 'o', POPT_ARG_STRING, NULL, OPT_OUTPUT,

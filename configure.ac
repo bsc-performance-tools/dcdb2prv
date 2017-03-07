@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([dcdb2prv], [0.2], [lau.mercadal@bsc.es])
+AC_INIT([dcdb2prv], [0.3], [lau.mercadal@bsc.es])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/dcdb2prv.h])
 AC_CONFIG_HEADERS([config.h])
