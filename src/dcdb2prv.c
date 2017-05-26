@@ -13,20 +13,22 @@ main(int argc, char **argv)
 {
         int ret = 0, err = 0;
         FILE *pwr_fp, *output_fp;
-        char *sensor = NULL;
-        char *sensor_old = malloc(sizeof(char));
-        char *sens = NULL;
+        char *node_name = NULL;
         uint64_t first_ts, last_ts, timestamp, energy;
         char *line = NULL;
         char *linecpy = NULL;
         ssize_t read = 0;
         size_t len = 0;
-        int node = 0;
+        unsigned int node = 0;
         GHashTable *nodes_ht = g_hash_table_new(g_str_hash, g_str_equal);
         GHashTable *nodes_inv_ht = g_hash_table_new(g_str_hash, g_str_equal);
         GPtrArray *sorted_trace_a = g_ptr_array_new();
         int index = 0;
         char *prvnode = malloc(sizeof(char *));
+        unsigned short int sensor_count = 0;
+        char *sensor = NULL;
+        char **sensor_array = NULL;
+        unsigned short int r = 0;
 
         ret = parseOptions(argc, argv);
 
@@ -58,26 +60,42 @@ main(int argc, char **argv)
                 exit(EXIT_FAILURE);
         }
 
-        if (getline(&line, &len, pwr_fp) == -1) {
+        /**
+         * Get sensor names
+        */
+        if ((read = getline(&line, &len, pwr_fp)) != -1) {
+                linecpy = strndup(line, read); 
+                strtok(linecpy, ",");
+                strtok(NULL, ",");
+
+                while ((sensor = strtok(NULL, ",")) != NULL) {
+                        sensor_count++;
+                        sensor_array = realloc(sensor_array, sensor_count * sizeof(char *));
+                        sensor_array[sensor_count - 1] = strdup(sensor);
+                        debug("Found sensor: %s\n", sensor_array[sensor_count - 1]);
+                }
+                free(sensor);
+        } else {
                 exit(EXIT_FAILURE);
         }
 
-        /* Load and sort power trace */
-        while ((read = getline (&line, &len, pwr_fp)) != -1 ) {
+        /**
+         * Load and sort power trace
+        */
+        while ((read = getline (&line, &len, pwr_fp)) > 1 ) {
                 linecpy = strndup(line, read);
-                sensor = strtok(linecpy, ",");
+                node_name = strtok(linecpy, ",");
                 sprintf(prvnode, "%d", node);
 
-                if (g_hash_table_insert(nodes_ht, strdup(sensor), strdup(prvnode))) {
-                        g_hash_table_insert(nodes_inv_ht, strdup(prvnode), strdup(sensor));
+                if (g_hash_table_insert(nodes_ht, strdup(node_name), strdup(prvnode))) {
+                        g_hash_table_insert(nodes_inv_ht, strdup(prvnode), strdup(node_name));
                         node ++;
                 }
                 g_ptr_array_add(sorted_trace_a, strndup(line, read));
         }
+        fclose(pwr_fp);
 
         g_ptr_array_sort(sorted_trace_a, (GCompareFunc)timecmp);
-
-//        g_hash_table_foreach(nodes_ht, (GHFunc)dump_pair, NULL);
 
         strcpy(line, g_ptr_array_index(sorted_trace_a, 0));
         strtok(line, ",");
@@ -93,13 +111,11 @@ main(int argc, char **argv)
                 line = g_ptr_array_index(sorted_trace_a, index);
 
                 /* Get node */
-                sensor = strtok(line, ",");
-                prvnode = g_hash_table_lookup(nodes_ht, sensor);
+                node_name = strtok(line, ",");
+                prvnode = g_hash_table_lookup(nodes_ht, node_name);
 
                 /* Get timestamp */
                 timestamp = strtoul(strtok(NULL, ","), NULL, 10);
-                /* Get energy */
-                energy = strtoul(strtok(NULL, ","), NULL, 10);
 
                 /*
                  * If the user doesn't specify an offset as a command line
@@ -113,28 +129,29 @@ main(int argc, char **argv)
                 /* Substract offset */
                 timestamp -= strtoul(offset, NULL, 10);
 
-                    //"2:%s:2:%s:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
                 fprintf(output_fp,
-                    "2:%s:1:%s:1:%" PRIu64 ":90000000:%" PRIu64 "\n",
+                    "2:%s:1:%s:1:%" PRIu64,
                     prvnode,
                     prvnode,
-                    timestamp,
-                    energy);
+                    timestamp);
+
+                /* Get and print energy readings */
+                for (r = 0; r < sensor_count; r++) {
+                        fprintf(output_fp, ":%d:%" PRIu64, 90000001+r, strtoul(strtok(NULL, ","), NULL, 10));
+                }
+                fprintf(output_fp, "\n");
         }
-
-        free(line);
-        fclose(pwr_fp);
-        fclose(output_fp);
-
-        createPCF(output_fn);
-        createROW(output_fn, nodes_inv_ht);
 
         g_ptr_array_free(sorted_trace_a, true);
         g_hash_table_destroy(nodes_ht);
-        g_hash_table_destroy(nodes_inv_ht);
-
-        free(sensor_old);
         free(prvnode);
+        fclose(output_fp);
+
+        createPCF(output_fn, sensor_count, sensor_array);
+        createROW(output_fn, nodes_inv_ht);
+
+        g_hash_table_destroy(nodes_inv_ht);
+        free(sensor_array);
 
         return ret;
 }
@@ -194,14 +211,14 @@ end:
 }
 
 static void
-writeHeader(FILE *output_fp, uint64_t duration, int node)
+writeHeader(FILE *output_fp, uint64_t duration, unsigned int node)
 {
         int err = 0;
 
         time_t now = time(0);
         struct tm *local = localtime(&now);
         char day[3], mon[3], hour[3], min[3];
-        int i = 0;
+        unsigned int i = 0;
 
         sprintf(day, "%.2d", local->tm_mday);
         sprintf(mon, "%.2d", local->tm_mon + 1);
@@ -231,10 +248,11 @@ writeHeader(FILE *output_fp, uint64_t duration, int node)
 }
 
 static void
-createPCF(char *ofile)
+createPCF(char *ofile, unsigned short int sensor_count, char **sensor_array)
 {
         FILE *ofp;
         int err = 0;
+        unsigned short int i = 0;
 
         ofile[strlen(ofile) - 4] = 0;
         strncat(ofile, ".pcf", 4);
@@ -322,8 +340,11 @@ createPCF(char *ofile)
             "29    {52,43,0}\n"
             "30    {255,46,0}\n"
             "31    {100,216,32}\n\n\n"
-            "EVENT_TYPE\n"
-            "9   90000000    Power\n");
+            "EVENT_TYPE\n");
+
+        for (i = 0; i < sensor_count; i++) {
+                fprintf(ofp, "9   %d     %s\n", 90000001+i, sensor_array[i]);
+        }
 
         fclose(ofp);
 
@@ -335,7 +356,7 @@ createROW(char *ofile, GHashTable *nodes_inv_ht)
 {
         FILE *ofp;
         int err = 0;
-        int i = 0;
+        unsigned int i = 0;
         int nnodes = g_hash_table_size(nodes_inv_ht);
         char *node_name;
         char *key = malloc(sizeof(char *));
@@ -361,6 +382,8 @@ createROW(char *ofile, GHashTable *nodes_inv_ht)
                 node_name = g_hash_table_lookup(nodes_inv_ht, key);
                 fprintf(ofp, "%s\n", node_name);
         }
+
+        free(key);
 
         fprintf(ofp, "\nLEVEL THREAD SIZE %i\n", nnodes);
         for (i = 1; i<=nnodes; i++) {

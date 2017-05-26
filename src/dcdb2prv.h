@@ -10,11 +10,11 @@
 #include <time.h>
 #include <glib.h>
 
-static void     writeHeader(FILE *_output_fp, uint64_t _duration, int _node);
-static void     createPCF(char *_ofile);
+static void     writeHeader(FILE *_output_fp, uint64_t _duration, unsigned int _node);
+static void     createPCF(char *_ofile, unsigned short int _sensor_count, char **_sensor_array);
 static void     createROW(char *_ofile, GHashTable * _nodes_inv_ht);
-static gint     timecmp(gconstpointer a, gconstpointer b);
-static void     dump_pair (const char *key, const char *value);
+static gint     timecmp(gconstpointer _a, gconstpointer _b);
+static void     dump_pair (const char *_key, const char *_value);
 
 /*
  * Modeline for space only BSD KNF code style
