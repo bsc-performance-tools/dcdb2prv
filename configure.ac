@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([dcdb2prv], [0.4.0], [lau.mercadal@bsc.es])
+AC_INIT([dcdb2prv], [0.4.1], [lau.mercadal@bsc.es])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/dcdb2prv.h])
 AC_CONFIG_HEADERS([config.h])
@@ -14,7 +14,10 @@ AC_PROG_INSTALL
 
 # Checks for libraries.
 AC_SEARCH_LIBS([poptGetContext], [popt], [],
-							 [AC_MSG_ERROR([Cannot find popt.])])
+							 [AC_MSG_ERROR([Cannot find libpopt.])])
+
+AC_SEARCH_LIBS([floor], [m], [],
+							 [AC_MSG_ERROR([Cannot find libm.])])
 
 PKG_CHECK_MODULES([glib2], [glib-2.0 >= 2.40], [],
 									[AC_MSG_ERROR([Cannot find glib-2.0.])])

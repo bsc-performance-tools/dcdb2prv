@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <libgen.h>
 #include <time.h>
+#include <math.h>
 #include <glib.h>
 
 static void     writeHeader(FILE *_output_fp, uint64_t _duration, unsigned int _node);
@@ -15,6 +16,7 @@ static void     createPCF(char *_ofile, unsigned short int _sensor_count, char *
 static void     createROW(char *_ofile, GHashTable * _nodes_inv_ht);
 static gint     timecmp(gconstpointer _a, gconstpointer _b);
 static void     dump_pair (const char *_key, const char *_value);
+static void     free_elem (gpointer _elem);
 
 /*
  * Modeline for space only BSD KNF code style

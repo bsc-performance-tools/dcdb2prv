@@ -14,17 +14,15 @@ main(int argc, char **argv)
         int ret = 0, err = 0;
         FILE *pwr_fp, *output_fp;
         char *node_name = NULL;
-        uint64_t first_ts, last_ts, timestamp, energy;
+        uint64_t first_ts, last_ts, timestamp;
         char *line = NULL;
-        char *linecpy = NULL;
         ssize_t read = 0;
         size_t len = 0;
         unsigned int node = 0;
-        GHashTable *nodes_ht = g_hash_table_new(g_str_hash, g_str_equal);
-        GHashTable *nodes_inv_ht = g_hash_table_new(g_str_hash, g_str_equal);
-        GPtrArray *sorted_trace_a = g_ptr_array_new();
+        GHashTable *nodes_ht = g_hash_table_new_full(g_str_hash, g_str_equal, (GDestroyNotify) free_elem, (GDestroyNotify) free_elem);
+        GHashTable *nodes_inv_ht = g_hash_table_new_full(g_str_hash, g_str_equal, (GDestroyNotify) free_elem, (GDestroyNotify) free_elem);
+        GPtrArray *sorted_trace_a = g_ptr_array_new_with_free_func((GDestroyNotify) free_elem);
         int index = 0;
-        char *prvnode = malloc(sizeof(char *));
         unsigned short int sensor_count = 0;
         char *sensor = NULL;
         char **sensor_array = NULL;
@@ -64,6 +62,7 @@ main(int argc, char **argv)
          * Get sensor names
         */
         if ((read = getline(&line, &len, pwr_fp)) != -1) {
+                char *linecpy = NULL;
                 linecpy = strndup(line, read); 
                 strtok(linecpy, ",");
                 strtok(NULL, ",");
@@ -75,6 +74,7 @@ main(int argc, char **argv)
                         debug("Found sensor: %s\n", sensor_array[sensor_count - 1]);
                 }
                 free(sensor);
+                free(linecpy);
         } else {
                 exit(EXIT_FAILURE);
         }
@@ -83,6 +83,8 @@ main(int argc, char **argv)
          * Load and sort power trace
         */
         while ((read = getline (&line, &len, pwr_fp)) > 1 ) {
+                char *prvnode = malloc(sizeof(char *));
+                char *linecpy = NULL;
                 linecpy = strndup(line, read);
                 node_name = strtok(linecpy, ",");
                 sprintf(prvnode, "%d", node);
@@ -92,6 +94,8 @@ main(int argc, char **argv)
                         node ++;
                 }
                 g_ptr_array_add(sorted_trace_a, strndup(line, read));
+                free (linecpy);
+                free (prvnode);
         }
         fclose(pwr_fp);
 
@@ -108,6 +112,7 @@ main(int argc, char **argv)
         writeHeader(output_fp, last_ts - first_ts, node);
 
         for (index = 0; index < sorted_trace_a->len; index++) {
+                char *prvnode = malloc(sizeof(char *));
                 line = g_ptr_array_index(sorted_trace_a, index);
 
                 /* Get node */
@@ -122,7 +127,7 @@ main(int argc, char **argv)
                  * argument, use the first timestamp as the offset
                 */
                 if (offset == NULL) {
-                        offset = realloc(offset, sizeof(uint64_t));
+                        offset = malloc((floorl(log10l(labs(timestamp))) + 2) * sizeof(char));
                         sprintf(offset, "%" PRIu64, timestamp);
                 }
 
@@ -142,13 +147,16 @@ main(int argc, char **argv)
                 fprintf(output_fp, "\n");
         }
 
+        free (offset);
+
         g_ptr_array_free(sorted_trace_a, true);
         g_hash_table_destroy(nodes_ht);
-        free(prvnode);
         fclose(output_fp);
 
         createPCF(output_fn, sensor_count, sensor_array);
         createROW(output_fn, nodes_inv_ht);
+
+        free (output_fn);
 
         g_hash_table_destroy(nodes_inv_ht);
         free(sensor_array);
@@ -213,8 +221,6 @@ end:
 static void
 writeHeader(FILE *output_fp, uint64_t duration, unsigned int node)
 {
-        int err = 0;
-
         time_t now = time(0);
         struct tm *local = localtime(&now);
         char day[3], mon[3], hour[3], min[3];
@@ -397,15 +403,17 @@ createROW(char *ofile, GHashTable *nodes_inv_ht)
 
 gint
 timecmp (gconstpointer a, gconstpointer b) {
-        char *line_a = strdup(*(char **)a);
-        char *line_b = strdup(*(char **)b);
+        char *line_a = strndup(*(char **)a, strlen(*(char **)a));
+        char *line_b = strndup(*(char **)b, strlen(*(char **)b));
         char *time_as, *time_bs;
 
         strtok(line_a, ",");
         time_as = strtok(NULL, ",");
+        free(line_a);
 
         strtok(line_b, ",");
         time_bs = strtok(NULL, ",");
+        free(line_b);
 
         return strcmp (time_as, time_bs);
 }
@@ -413,6 +421,12 @@ timecmp (gconstpointer a, gconstpointer b) {
 static void
 dump_pair (const char *key, const char *value) {
         g_print("Key: %s Value: %s\n", key, value);
+}
+
+void
+free_elem (gpointer elem)
+{
+        free (elem);
 }
 
 /*
